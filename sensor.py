@@ -37,6 +37,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         RouterDNSSettings(coordinator, config),
         RouterSignalSensor(coordinator, config),
         RouterMonitoringStatus(coordinator, config),
+        RouterSignalQuality(coordinator, config),
     ])
 
 class LocalRouter(CoordinatorEntity, SensorEntity):
@@ -103,6 +104,75 @@ class RouterDHCPSettings(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         return self.coordinator.data.get("dhcp_settings", {})
+
+class RouterSignalQuality(CoordinatorEntity, SensorEntity):
+    """Representation of a Signal Quality Sensor."""
+
+    _attr_name = "Router Signal Quality"
+    _attr_icon = "mdi:signal-cellular-outline"
+
+    def __init__(self, coordinator, config):
+        super().__init__(coordinator)
+        self._config = config
+        self._attr_extra_state_attributes = {}
+
+    @property
+    def unique_id(self):
+        return f"{self._config['url']}_signal_quality"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._config["url"])},
+            "name": "Huawei Router",
+            "manufacturer": "Huawei",
+            "model": "LTE",
+        }
+
+    @property
+    def native_value(self):
+        return self._get_quality("rsrp", self.coordinator.data.get("device_signal", {}).get("rsrp"))
+
+    @property
+    def extra_state_attributes(self):
+        signal = self.coordinator.data.get("device_signal", {})
+        return {
+            "rssi_quality": self._get_quality("rssi", signal.get("rssi")),
+            "rsrp_quality": self._get_quality("rsrp", signal.get("rsrp")),
+            "rsrq_quality": self._get_quality("rsrq", signal.get("rsrq")),
+            "sinr_quality": self._get_quality("sinr", signal.get("sinr")),
+        }
+
+    def _get_quality(self, metric, value):
+        if value is None:
+            return "Unknown"
+        try:
+            v_str = str(value).upper().replace('DBM', '').replace('DB', '').replace('>=', '').strip()
+            v = float(v_str)
+        except ValueError:
+            return "Unknown"
+
+        if metric == 'rssi':
+            if v >= -65: return "Excellent"
+            if v >= -75: return "Good"
+            if v >= -85: return "Fair"
+            return "Poor"
+        if metric == 'rsrp':
+            if v >= -90: return "Excellent"
+            if v >= -105: return "Good"
+            if v >= -120: return "Fair"
+            return "Poor"
+        if metric == 'rsrq':
+            if v >= -10: return "Excellent"
+            if v >= -15: return "Good"
+            if v >= -20: return "Fair"
+            return "Poor"
+        if metric == 'sinr':
+            if v >= 10: return "Excellent"
+            if v >= 5: return "Good"
+            if v >= 0: return "Fair"
+            return "Poor"
+        return "Unknown"
 
 class RouterSignalSensor(CoordinatorEntity, SensorEntity):
     """Representation of a Signal Sensor."""
