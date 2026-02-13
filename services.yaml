@@ -1,0 +1,3 @@
+get_info:
+  name: Get Information
+  description: Get router information and show it in a notification.

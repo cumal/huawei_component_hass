@@ -1,0 +1,10 @@
+{
+  "domain": "huawei_service_sync",
+  "name": "Huawei Router Service",
+  "documentation": "https://github.com/Salamek/huawei-lte-api",
+  "dependencies": [],
+  "codeowners": [],
+  "requirements": ["huawei-lte-api>=1.6.0"],
+  "version": "1.0.0",
+  "config_flow": true
+}
