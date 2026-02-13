@@ -69,6 +69,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     "dhcp_settings": client.dhcp.settings(),
                     "device_signal": client.device.signal(),
                     "monitoring_status": client.monitoring.status(),
+                    "traffic_statistics": client.monitoring.traffic_statistics(),
                 }
 
         try:

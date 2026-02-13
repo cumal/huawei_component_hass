@@ -38,6 +38,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         RouterSignalSensor(coordinator, config),
         RouterMonitoringStatus(coordinator, config),
         RouterSignalQuality(coordinator, config),
+        RouterTrafficStatistics(coordinator, config),
     ])
 
 class LocalRouter(CoordinatorEntity, SensorEntity):
@@ -104,6 +105,38 @@ class RouterDHCPSettings(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         return self.coordinator.data.get("dhcp_settings", {})
+
+class RouterTrafficStatistics(CoordinatorEntity, SensorEntity):
+    """Representation of a Traffic Statistics Sensor."""
+
+    _attr_name = "Router Traffic Statistics"
+    _attr_icon = "mdi:chart-line"
+
+    def __init__(self, coordinator, config):
+        super().__init__(coordinator)
+        self._config = config
+        self._attr_extra_state_attributes = {}
+
+    @property
+    def unique_id(self):
+        return f"{self._config['url']}_traffic_statistics"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._config["url"])},
+            "name": "Huawei Router",
+            "manufacturer": "Huawei",
+            "model": "LTE",
+        }
+
+    @property
+    def native_value(self):
+        return self.coordinator.data.get("traffic_statistics", {}).get("CurrentDownloadRate", "Unknown")
+
+    @property
+    def extra_state_attributes(self):
+        return self.coordinator.data.get("traffic_statistics", {})
 
 class RouterSignalQuality(CoordinatorEntity, SensorEntity):
     """Representation of a Signal Quality Sensor."""
