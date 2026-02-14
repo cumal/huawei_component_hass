@@ -39,6 +39,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
         RouterMonitoringStatus(coordinator, config),
         RouterSignalQuality(coordinator, config),
         RouterTrafficStatistics(coordinator, config),
+        RouterConnectedDevices(coordinator, config),
     ])
 
 class LocalRouter(CoordinatorEntity, SensorEntity):
@@ -105,6 +106,61 @@ class RouterDHCPSettings(CoordinatorEntity, SensorEntity):
     @property
     def extra_state_attributes(self):
         return self.coordinator.data.get("dhcp_settings", {})
+
+class RouterConnectedDevices(CoordinatorEntity, SensorEntity):
+    """Representation of a Connected Devices Sensor."""
+
+    _attr_name = "Router Connected Devices"
+    _attr_icon = "mdi:lan-connect"
+
+    def __init__(self, coordinator, config):
+        super().__init__(coordinator)
+        self._config = config
+        self._attr_extra_state_attributes = {}
+
+    @property
+    def unique_id(self):
+        return f"{self._config['url']}_connected_devices"
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self._config["url"])},
+            "name": "Huawei Router",
+            "manufacturer": "Huawei",
+            "model": "LTE",
+        }
+
+    @property
+    def native_value(self):
+        return len(self._get_devices())
+
+    @property
+    def extra_state_attributes(self):
+        return {"devices": self._get_devices()}
+
+    def _get_devices(self):
+        data = self.coordinator.data.get("lan_host_info")
+        if not data:
+            return []
+
+        hosts = data.get("Hosts", {}).get("Host", [])
+        if isinstance(hosts, dict):
+            hosts = [hosts]
+
+        devices = []
+        for host in hosts:
+            if str(host.get("Active")) == "1":
+                ips = [ip.strip() for ip in host.get("IpAddress", "").split(";") if ip.strip()]
+                ipv4 = next((ip for ip in ips if "." in ip), None)
+                ipv6 = next((ip for ip in ips if ":" in ip), None)
+                devices.append({
+                    "hostname": host.get("HostName"),
+                    "ip_address": ipv4 if ipv4 else (ips[0] if ips else None),
+                    "ipv6_address": ipv6,
+                    "mac_address": host.get("MacAddress"),
+                })
+        return devices
 
 class RouterTrafficStatistics(CoordinatorEntity, SensorEntity):
     """Representation of a Traffic Statistics Sensor."""

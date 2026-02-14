@@ -70,6 +70,7 @@ class HuaweiDataUpdateCoordinator(DataUpdateCoordinator):
                     "device_signal": client.device.signal(),
                     "monitoring_status": client.monitoring.status(),
                     "traffic_statistics": client.monitoring.traffic_statistics(),
+                    "lan_host_info": client.lan.host_info(),
                 }
 
         try:
