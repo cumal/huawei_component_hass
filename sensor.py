@@ -15,6 +15,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from . import DOMAIN, create_session
 
+requests.packages.urllib3.disable_warnings()
+
 _LOGGER = logging.getLogger(__name__)
 
 def setup_platform(

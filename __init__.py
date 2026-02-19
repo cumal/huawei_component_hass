@@ -13,6 +13,9 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from homeassistant.helpers.typing import ConfigType
 from huawei_lte_api.Client import Client
 from huawei_lte_api.Connection import Connection
+from urllib3.exceptions import InsecureRequestWarning
+
+requests.packages.urllib3.disable_warnings(category=InsecureRequestWarning)
 
 # The domain of your component. Should be equal to the name of your component.
 DOMAIN = "huawei_service_sync"
