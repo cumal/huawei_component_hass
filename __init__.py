@@ -25,6 +25,15 @@ CONF_URL = "url"
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
 
+SERVICE_SEND_SMS = "send_sms"
+ATTR_PHONE = "phone"
+ATTR_MESSAGE = "message"
+
+SEND_SMS_SCHEMA = vol.Schema(
+    {vol.Required(ATTR_PHONE): cv.string, vol.Required(ATTR_MESSAGE): cv.string}
+)
+
+
 CONFIG_SCHEMA = vol.Schema(
     {
         DOMAIN: vol.Schema(
@@ -105,29 +114,68 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 def _register_services(hass: HomeAssistant, conf: dict):
-    def get_client():
+    def get_connection():
         url = conf[CONF_URL]
         username = conf[CONF_USERNAME]
         password = conf[CONF_PASSWORD]
         scheme, host = url.split("://", 1) if "://" in url else ("http", url)
         session = create_session()
-        with Connection(f"{scheme}://{username}:{password}@{host}/", requests_session=session) as connection:
-            return Client(connection)
+        return Connection(f"{scheme}://{username}:{password}@{host}/", requests_session=session)
 
     async def get_info(call: ServiceCall) -> None:
         """Get router information."""
         def _fetch():
-            with get_client() as client:
-                info = client.device.information()
-                _LOGGER.info("Router Information: %s", info)
-                hass.components.persistent_notification.create(
-                    f"Device: {info.get('DeviceName')}\nSW: {info.get('SoftwareVersion')}",
-                    title="Huawei Router Info"
-                )
-        await hass.async_add_executor_job(_fetch)
+            """Fetch information from the router."""
+            with get_connection() as connection:
+                client = Client(connection)
+                return client.device.information()
+
+        info = await hass.async_add_executor_job(_fetch)
+        _LOGGER.info("Router Information: %s", info)
+        await hass.services.async_call(
+            "persistent_notification",
+            "create",
+            {
+                "title": "Huawei Router Info",
+                "message": f"Device: {info.get('DeviceName')}\nSW: {info.get('SoftwareVersion')}",
+            },
+        )
+
+    async def send_sms(call: ServiceCall) -> None:
+        """Send an SMS message."""
+        phone = call.data[ATTR_PHONE]
+        message = call.data[ATTR_MESSAGE]
+
+        def _send() -> str | None:
+            """Send the SMS and return an error message on failure."""
+            with get_connection() as connection:
+                client = Client(connection)
+                try:
+                    client.sms.send_sms(phone_numbers=[phone], message=message)
+                    _LOGGER.info("SMS sent to %s", phone)
+                    return None
+                except Exception as e:
+                    _LOGGER.error("Failed to send SMS to %s: %s", phone, e)
+                    return str(e)
+
+        error = await hass.async_add_executor_job(_send)
+
+        if error:
+            await hass.services.async_call(
+                "persistent_notification", "create",
+                {"title": "Huawei Router SMS Error", "message": f"Failed to send SMS to {phone}: {error}"}
+            )
+        else:
+            await hass.services.async_call(
+                "persistent_notification", "create",
+                {"title": "Huawei Router SMS", "message": f"SMS sent to {phone}"}
+            )
 
     # Register our service with Home Assistant.
     hass.services.async_register(DOMAIN, 'get_info', get_info)
+    hass.services.async_register(
+        DOMAIN, SERVICE_SEND_SMS, send_sms, schema=SEND_SMS_SCHEMA
+    )
 
 def setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the sync service example component."""

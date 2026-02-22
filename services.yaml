@@ -1,3 +1,21 @@
 get_info:
-  name: Get Information
+  name: Get Router Information
   description: Get router information and show it in a notification.
+send_sms:
+  name: Send SMS
+  description: Sends an SMS message via the Huawei router.
+  fields:
+    phone:
+      name: Phone Number
+      description: The recipient's phone number.
+      required: true
+      example: "+1234567890"
+      selector:
+        text:
+    message:
+      name: Message
+      description: The content of the SMS message.
+      required: true
+      example: "Hello from Home Assistant!"
+      selector:
+        text:
